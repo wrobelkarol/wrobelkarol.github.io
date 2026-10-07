@@ -1273,7 +1273,7 @@ const KROKI = [
     tekst: 'Po lewej skan, po prawej dane odczytane przez system z pewnością odczytu. Porównaj, popraw, wybierz dział i zatwierdź. Zły NIP, niezgodne kwoty albo brak pola zablokują zatwierdzenie.',
     trasa: () => `weryfikacja/${wybierzDoWeryfikacji()}`, cel: '[data-tour="formularz"]' },
   { tytul: 'Dokument naprawdę błędny?',
-    tekst: 'Operator nie odrzuca dokumentów. Na tej fakturze kwoty się nie sumują — zaznaczasz „Oznacz jako błędny”, opisujesz błąd i zatwierdzasz. Dokument idzie do akceptującego z czerwonym oznaczeniem, a decyzję podejmuje on.',
+    tekst: 'Operator nie odrzuca dokumentów. Na tej fakturze kwoty się nie sumują — zaznaczasz „Oznacz jako błędny”, opisujesz błąd i zatwierdzasz. Dokument trafia do akceptacji z czerwonym oznaczeniem, a decyzja zapada na etapie akceptacji.',
     trasa: () => `weryfikacja/${wybierzBledny()}`, cel: '[data-tour="blad"]',
     po: () => { const cb = $('#z-bledem'); if (cb && !cb.checked) cb.click(); } },
   { tytul: 'Akceptacja zależna od kwoty',
