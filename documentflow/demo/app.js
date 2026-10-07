@@ -159,7 +159,7 @@ const kwotaDoPola = k => (k === null || k === undefined ? '' : Number(k).toFixed
 // ------------------------------------------------------------------ stan
 
 const KLUCZ_STANU = 'documentflow-demo-stan-v2';
-const KLUCZ_SAMOUCZKA = 'documentflow-demo-samouczek-v1';
+const KLUCZ_SAMOUCZKA = 'documentflow-demo-samouczek-v2';
 let S = null;
 let ja = 'operator';
 
@@ -932,7 +932,7 @@ function formularzWeryfikacji(d) {
   const biezacyTyp = d.typ || d.typ_proponowany;
   const sugestia = (d.ostrzezenia.join(' ').match(/WP-\d{4}-\d{5}/) || [''])[0];
   return `${ostrzezenieTerminu}
-    ${doWyjasnienia ? `<div class="komunikat ostrzezenie"><b>Wymaga wyjaśnienia:</b> ${esc(d.komentarz)}<br>Wyjaśnij sprawę, popraw dane i zatwierdź je tutaj (opisz, co ustalono) — albo oznacz duplikat.</div>`
+    ${doWyjasnienia ? `<div class="komunikat ostrzezenie" data-tour="wyjasnienie"><b>Wymaga wyjaśnienia:</b> ${esc(d.komentarz)}<br>Wyjaśnij sprawę, popraw dane i zatwierdź je tutaj (opisz, co ustalono) — albo oznacz duplikat.</div>`
       : opis ? `<div class="komunikat ${d.typ_proponowany ? 'info' : 'ostrzezenie'}">${esc(opis)}</div>` : ''}
     ${d.ostrzezenia.map(o => `<div class="komunikat ostrzezenie">${esc(o)}</div>`).join('')}
     ${d.blad ? `<div class="komunikat blad"><b>Wcześniej oznaczony jako błędny:</b> ${esc(d.opis_bledu)}</div>` : ''}
@@ -1049,7 +1049,7 @@ function widokAkceptacja(numer) {
     <section class="karta podglad"><h2>${esc(d.numer_rejestrowy)} · ${esc(d.tytul || '')}</h2>${podglad(d)}</section>
     <section class="karta formularz">
       <p>Status: ${chipStatusu(d.status)}</p>
-      ${d.blad ? `<div class="komunikat blad"><b>Operator oznaczył dokument jako błędny:</b> ${esc(d.opis_bledu)}<br>Zdecyduj: zatwierdź mimo błędu, zwróć do wyjaśnienia albo odrzuć (z komentarzem).</div>` : ''}
+      ${d.blad ? `<div class="komunikat blad" data-tour="blad-decyzja"><b>Operator oznaczył dokument jako błędny:</b> ${esc(d.opis_bledu)}<br>Zdecyduj: zatwierdź mimo błędu, zwróć do wyjaśnienia albo odrzuć (z komentarzem).</div>` : ''}
       ${termin ? `<p class="podpis">Termin płatności: ${terminOpis(d, termin)}</p>` : ''}
       ${daneDokumentuHtml(d)}
       <div data-tour="sciezka"><h3>Ścieżka akceptacji</h3>${etapyHtml(d)}
@@ -1261,7 +1261,7 @@ function ustawRole(login) {
 
 const KROKI = [
   { tytul: 'Witaj w DocumentFlow',
-    tekst: 'To demo elektronicznego obiegu dokumentów w fikcyjnej firmie. Pokażę w 7 krokach, jak dokument przechodzi od wpływu do archiwum. Wszystkie dane są fikcyjne.',
+    tekst: () => `To demo elektronicznego obiegu dokumentów w fikcyjnej firmie. Pokażę w ${KROKI.length} krokach, jak dokument przechodzi od wpływu do archiwum — także co się dzieje, gdy coś jest nie tak. Wszystkie dane są fikcyjne.`,
     trasa: 'pulpit' },
   { tytul: 'Kim jesteś w systemie',
     tekst: 'Tu zmieniasz osobę: operator, kierownicy działów, dyrektor, finanse. Każdy widzi swoje zadania — tak jedna osoba może przejść cały obieg.',
@@ -1270,27 +1270,52 @@ const KROKI = [
     tekst: 'W skrzynce czeka 6 nowych plików: faktury, umowa, pismo i jeden duplikat. Kliknij „Dalej”, a system nada numery wpływu, wykryje duplikat pliku i odczyta tekst (OCR).',
     trasa: 'wplyw', cel: '[data-tour="inbox"]', przyDalej: () => przyjmijInbox() },
   { tytul: 'Weryfikacja: człowiek zatwierdza',
-    tekst: 'Po lewej skan, po prawej dane odczytane przez system z pewnością odczytu. Porównaj, popraw, wybierz dział i zatwierdź. Zły NIP czy niezgodne kwoty zablokują zatwierdzenie — a jeśli dokument naprawdę jest błędny, oznaczasz go jako błędny i decyzję podejmuje akceptujący.',
+    tekst: 'Po lewej skan, po prawej dane odczytane przez system z pewnością odczytu. Porównaj, popraw, wybierz dział i zatwierdź. Zły NIP, niezgodne kwoty albo brak pola zablokują zatwierdzenie.',
     trasa: () => `weryfikacja/${wybierzDoWeryfikacji()}`, cel: '[data-tour="formularz"]' },
+  { tytul: 'Dokument naprawdę błędny?',
+    tekst: 'Operator nie odrzuca dokumentów. Na tej fakturze kwoty się nie sumują — zaznaczasz „Oznacz jako błędny”, opisujesz błąd i zatwierdzasz. Dokument idzie do akceptującego z czerwonym oznaczeniem, a decyzję podejmuje on.',
+    trasa: () => `weryfikacja/${wybierzBledny()}`, cel: '[data-tour="blad"]',
+    po: () => { const cb = $('#z-bledem'); if (cb && !cb.checked) cb.click(); } },
   { tytul: 'Akceptacja zależna od kwoty',
     tekst: 'Faktura do 10 000 zł trafia do kierownika działu, powyżej — także do dyrektora, powyżej 50 000 zł — jeszcze do finansów. Etapy idą po kolei, a kto weryfikował, ten nie akceptuje.',
     trasa: () => `akceptacja/${wybierzDoAkceptacji()}`, cel: '[data-tour="sciezka"]', przed: () => { tylkoMoje = false; } },
+  { tytul: 'Akceptujący decyduje o błędzie',
+    tekst: 'Tak kierownik widzi dokument oznaczony przez operatora. Może zatwierdzić mimo błędu, zwrócić do wyjaśnienia albo odrzucić — przy zwrocie i odrzuceniu komentarz jest obowiązkowy.',
+    trasa: () => `akceptacja/${wybierzBlednyWAkceptacji()}`, cel: '[data-tour="blad-decyzja"]', przed: () => { tylkoMoje = false; } },
+  { tytul: 'Wymaga wyjaśnienia',
+    tekst: 'Zwrócony dokument wraca do operatora z komentarzem akceptującego. Wyjaśniasz sprawę, poprawiasz dane i zatwierdzasz w tym samym formularzu, wpisując, co ustalono. Akceptacja zaczyna się od nowa.',
+    trasa: () => `weryfikacja/${wybierzDoWyjasnienia()}`, cel: '[data-tour="wyjasnienie"]' },
   { tytul: 'Archiwum z historią',
     tekst: 'Zaakceptowany dokument trafia do archiwum: nazwa pliku według wzoru, folder Rok/Miesiąc/Typ/Dział, plik tylko do odczytu i termin brakowania. Niżej pełna historia: kto, kiedy, co zmienił.',
     trasa: () => `archiwum/${wybierzZArchiwum()}`, cel: '[data-tour="archiwum-dane"]' },
   { tytul: 'Pulpit pilnuje terminów',
-    tekst: 'Pulpit pokazuje, co czeka i gdzie są zatory, a alerty przypominają o fakturach, którym zaraz minie termin płatności. Teraz spróbuj sam — zacznij od weryfikacji. „Od nowa” przywraca stan początkowy.',
+    tekst: 'Pulpit pokazuje, co czeka i gdzie są zatory, a alerty przypominają o fakturach, którym zaraz minie termin płatności. Teraz spróbuj sam. Samouczek odtworzysz przyciskiem u góry, a „Od nowa” przywraca stan początkowy.',
     trasa: 'pulpit', cel: '[data-tour="alerty"]' },
 ];
 
+const naWeryfikacji = () => widoczne().filter(d => ['DO_WERYFIKACJI', 'WYMAGA_WYJASNIENIA'].includes(d.status));
 function wybierzDoWeryfikacji() {
   const kolejka = widoczne().filter(d => d.status === 'DO_WERYFIKACJI');
   const d = kolejka.find(x => x.plik_oryginalny === 'dokument73.pdf') || wgPilnosci(kolejka)[0];
   return d ? d.numer_wplywu : '';
 }
+function wybierzBledny() {
+  // faktura, w której netto + VAT ≠ brutto (z INBOX); inaczej dowolna czekająca na weryfikację
+  const kolejka = widoczne().filter(d => d.status === 'DO_WERYFIKACJI');
+  const d = kolejka.find(x => x.plik_oryginalny === 'scan7822.pdf') || kolejka.find(x => x.typ_proponowany === 'faktura') || kolejka[0];
+  return d ? d.numer_wplywu : '';
+}
 function wybierzDoAkceptacji() {
   const lista = widoczne().filter(d => d.status === 'OCZEKUJE_NA_AKCEPTACJE');
   const d = lista.find(x => x.plik_oryginalny === 'IMG_5322.pdf') || lista.sort((a, b) => etapyAkceptacji(b).length - etapyAkceptacji(a).length)[0];
+  return d ? d.numer_wplywu : '';
+}
+function wybierzBlednyWAkceptacji() {
+  const d = widoczne().find(x => x.status === 'OCZEKUJE_NA_AKCEPTACJE' && x.blad);
+  return d ? d.numer_wplywu : wybierzDoAkceptacji();
+}
+function wybierzDoWyjasnienia() {
+  const d = naWeryfikacji().find(x => x.status === 'WYMAGA_WYJASNIENIA');
   return d ? d.numer_wplywu : '';
 }
 function wybierzZArchiwum() {
@@ -1360,12 +1385,13 @@ function pokazKrok(i) {
   dymek.classList.add('wejscie');
   $('.sm-licznik', el).textContent = `${i + 1} / ${KROKI.length}`;
   $('#sm-tytul', el).textContent = k.tytul;
-  $('.sm-tekst', el).textContent = k.tekst;
+  $('.sm-tekst', el).textContent = typeof k.tekst === 'function' ? k.tekst() : k.tekst;
   $('.sm-kropki', el).innerHTML = KROKI.map((_, j) => `<span class="${j === i ? 'aktywna' : j < i ? 'zrobiona' : ''}"></span>`).join('');
   $('.sm-wstecz', el).style.visibility = i === 0 ? 'hidden' : 'visible';
   $('.sm-dalej', el).textContent = i === KROKI.length - 1 ? 'Zaczynam' : i === 0 ? 'Pokaż' : 'Dalej';
   // poczekaj, aż widok się przerysuje po zmianie trasy
   setTimeout(() => {
+    if (k.po) k.po();
     samouczek.cel = k.cel ? $(k.cel) : null;
     if (samouczek.cel) {
       const mobilny = window.innerWidth < 720;
@@ -1434,6 +1460,9 @@ function ustawOkno() {
 // ------------------------------------------------------------------ start
 
 async function start() {
+  const pasek = () => document.documentElement.style.setProperty('--wys-paska', `${$('.topbar').offsetHeight}px`);
+  pasek();
+  window.addEventListener('resize', pasek);
   const zapisany = wczytajZapisany();
   try {
     if (zapisany) { S = zapisany.S; ja = PO_LOGINIE[zapisany.ja] ? zapisany.ja : 'operator'; }

@@ -1,6 +1,6 @@
 # Karol Wróbel — portfolio
 
-Strona: https://adas2115.github.io/
+Strona: https://wrobelkarol.github.io/
 
 - `index.html` — strona główna z projektami
 - `documentflow/` — opis projektu DocumentFlow

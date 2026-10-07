@@ -51,7 +51,7 @@ code { font: 12.5px/1.4 ui-monospace, "Cascadia Mono", Consolas, monospace; back
 
 /* ---------- układ */
 .uklad { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: calc(100vh - 57px); }
-.nawigacja { padding: 16px 10px; border-right: 1px solid var(--linia); background: var(--karta); position: sticky; top: 57px; align-self: start; height: calc(100vh - 57px); }
+.nawigacja { padding: 16px 10px; border-right: 1px solid var(--linia); background: var(--karta); position: sticky; top: var(--wys-paska, 57px); align-self: start; height: calc(100vh - var(--wys-paska, 57px)); }
 .nawigacja a {
   display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 8px;
   color: var(--tekst); text-decoration: none; font-weight: 500; margin-bottom: 2px;
@@ -296,3 +296,16 @@ body.z-samouczkiem { overscroll-behavior: none; }
 .blok-bledu .pole { margin: 10px 0 0; }
 .pewnosc.zatwierdzone { color: var(--szary); background: var(--szary-tlo); }
 .pole[hidden] { display: none; }
+
+/* ---------- przycisk „Odtwórz samouczek” */
+.btn.akcent { color: var(--akcent-ciemny); background: var(--akcent-jasny); border-color: #cddafa; }
+.btn.akcent:hover { background: #dfe8fc; }
+.btn svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+@media (max-width: 560px) {
+  .topbar-akcje { width: 100%; margin-left: 0; }
+  .topbar-akcje .btn { flex: 1; }
+}
+@media (max-width: 1400px) and (min-width: 861px) {
+  .topbar-data { display: none; }
+  .rola select { min-width: 230px; }
+}
