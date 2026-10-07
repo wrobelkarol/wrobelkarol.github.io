@@ -178,7 +178,7 @@ function przygotujStan(s) {
   };
 }
 async function stanPoczatkowy() {
-  const odp = await fetch('dane/stan.json');
+  const odp = await fetch('dane/stan.json?v=202610071956');
   return przygotujStan(await odp.json());
 }
 function zapisz() {
