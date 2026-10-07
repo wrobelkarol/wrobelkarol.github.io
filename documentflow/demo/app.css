@@ -288,3 +288,11 @@ body.z-samouczkiem { overscroll-behavior: none; }
   .brand .znacznik { display: none; }
   #toasty { left: 16px; right: 16px; bottom: 16px; max-width: none; }
 }
+
+/* ---------- oznaczenie „błąd” (R13) */
+.blok-bledu { margin: 4px 0 6px; padding: 12px 14px; border: 1px dashed #f0c4bf; border-radius: 8px; background: #fffbfa; }
+.blok-bledu .przelacznik { margin: 0 0 4px; }
+.blok-bledu .podpis { margin: 0 0 4px; }
+.blok-bledu .pole { margin: 10px 0 0; }
+.pewnosc.zatwierdzone { color: var(--szary); background: var(--szary-tlo); }
+.pole[hidden] { display: none; }

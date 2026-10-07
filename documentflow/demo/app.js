@@ -58,7 +58,7 @@ const PRZEJSCIA = {
   null: ['NOWY'],
   NOWY: ['DUPLIKAT', 'DO_WERYFIKACJI'],
   DO_WERYFIKACJI: ['DUPLIKAT', 'WYMAGA_WYJASNIENIA', 'OCZEKUJE_NA_AKCEPTACJE', 'ZATWIERDZONY'],
-  WYMAGA_WYJASNIENIA: ['DO_WERYFIKACJI'],
+  WYMAGA_WYJASNIENIA: ['DO_WERYFIKACJI', 'DUPLIKAT'],
   OCZEKUJE_NA_AKCEPTACJE: ['ZATWIERDZONY', 'ODRZUCONY', 'WYMAGA_WYJASNIENIA'],
   ZATWIERDZONY: ['PRZEKAZANY', 'ZARCHIWIZOWANY'],
   PRZEKAZANY: ['ZARCHIWIZOWANY'],
@@ -73,7 +73,7 @@ const OPISY_ZDARZEN = {
   NUMER_NADANY: 'Numer rejestrowy nadany', WYSLANO_DO_AKCEPTACJI: 'Wysłano do akceptacji', ZATWIERDZONO: 'Zatwierdzono',
   ODRZUCONO: 'Odrzucono', ZWROCONO: 'Zwrócono do wyjaśnienia', PRZEKAZANO: 'Przekazano', ZARCHIWIZOWANO: 'Zarchiwizowano',
   ZMIANA_STATUSU: 'Zmiana statusu', WYMAGA_WYJASNIENIA: 'Wymaga wyjaśnienia', WYJASNIONO: 'Wyjaśniono',
-  BLAD_PRZETWARZANIA: 'Błąd przetwarzania', NOWA_WERSJA: 'Nowa wersja pliku', RETENCJA_USTALONA: 'Ustalono termin brakowania',
+  BLAD_PRZETWARZANIA: 'Błąd przetwarzania', NOWA_WERSJA: 'Nowa wersja pliku', OZNACZONO_JAKO_BLEDNY: 'Oznaczony jako błędny', RETENCJA_USTALONA: 'Ustalono termin brakowania',
   USTAWIENIA_ZMIENIONE: 'Zmiana ustawień',
 };
 
@@ -158,7 +158,7 @@ const kwotaDoPola = k => (k === null || k === undefined ? '' : Number(k).toFixed
 
 // ------------------------------------------------------------------ stan
 
-const KLUCZ_STANU = 'documentflow-demo-stan-v1';
+const KLUCZ_STANU = 'documentflow-demo-stan-v2';
 const KLUCZ_SAMOUCZKA = 'documentflow-demo-samouczek-v1';
 let S = null;
 let ja = 'operator';
@@ -454,19 +454,33 @@ function sprawdzDane(d, typ, surowe) {
   return problemy;
 }
 
-function zweryfikuj(d, typ, surowe, dzial, kto, osoba) {
+/* Dokument „wymaga wyjaśnienia” zatwierdza się tym samym formularzem, z opisem wyjaśnienia (R13).
+ * `blad` — opis błędu: walidacje nie blokują, dokument idzie do akceptującego z oznaczeniem;
+ * pismo i „inne” z błędem trafiają do kierownika działu. */
+function zweryfikuj(d, typ, surowe, dzial, kto, osoba, wyjasnienie, blad) {
   if (!POLA_TYPU[typ]) throw new BladObiegu('Wybierz typ dokumentu.');
   const dane = oczysc(typ, surowe);
-  if (d.status !== 'DO_WERYFIKACJI') throw new BladObiegu(`Dokument nie czeka na weryfikację (status: ${d.status}).`);
-  const problemy = waliduj(typ, dane, d.data_wplywu.slice(0, 10), d.pro_forma).filter(p => p.blokuje);
+  if (!['DO_WERYFIKACJI', 'WYMAGA_WYJASNIENIA'].includes(d.status)) throw new BladObiegu(`Dokument nie czeka na weryfikację (status: ${d.status}).`);
+  blad = (blad || '').trim() || null;
+  let problemy = waliduj(typ, dane, d.data_wplywu.slice(0, 10), d.pro_forma).filter(p => p.blokuje);
+  const bledyWalidacji = problemy.map(p => p.komunikat);
+  if (blad) problemy = [];
   if (!dzial) problemy.push({ pole: 'dzial', komunikat: 'Wskaż dział.', blokuje: true });
+  if (d.status === 'WYMAGA_WYJASNIENIA' && !(wyjasnienie || '').trim()) problemy.push({ pole: 'wyjasnienie', komunikat: 'Opisz, jak sprawa została wyjaśniona.', blokuje: true });
   if (problemy.length) throw new BladWalidacji(problemy);
+  if (d.status === 'WYMAGA_WYJASNIENIA') {
+    zmienStatus(d, 'DO_WERYFIKACJI', kto, 'WYJASNIONO', { komentarz: wyjasnienie.trim() });
+    d.komentarz = wyjasnienie.trim();
+  }
 
-  if (typ !== d.typ_proponowany) audyt('TYP_ZMIENIONY', kto, d, { z: d.typ_proponowany || 'NIEROZPOZNANY', na: typ });
+  const poprzedniTyp = d.typ || d.typ_proponowany;
+  if (typ !== poprzedniTyp) audyt('TYP_ZMIENIONY', kto, d, { z: poprzedniTyp || 'NIEROZPOZNANY', na: typ });
+  // porównujemy z danymi zatwierdzonymi wcześniej (np. przed zwrotem), a jeśli ich nie ma — z odczytem OCR
+  const poprzednie = d.typ === typ ? (daneTypu(d) || {}) : {};
   for (const [pole, wartosc] of Object.entries(dane)) {
-    const stara = (d.propozycje[pole] || {}).wartosc;
-    const s = typeof stara === 'number' ? stara : (stara ?? null);
-    if (jakoTekst(s) !== jakoTekst(wartosc)) audyt('POLE_ZMIENIONE', kto, d, { pole, z: stara ?? null, na: wartosc });
+    const stara = pole in poprzednie ? poprzednie[pole] : (d.propozycje[pole] || {}).wartosc;
+    const s_ = typeof stara === 'number' ? stara : (stara ?? null);
+    if (jakoTekst(s_) !== jakoTekst(wartosc)) audyt('POLE_ZMIENIONE', kto, d, { pole, z: stara ?? null, na: wartosc });
   }
   zapiszDaneTypu(d, typ, dane);
   const [kontrahent, dataDok, kwota, tytul] = polaWspolne(typ, dane);
@@ -477,16 +491,23 @@ function zweryfikuj(d, typ, surowe, dzial, kto, osoba) {
   const poprzedniNumer = d.numer_rejestrowy;
   Object.assign(d, { typ, numer_rejestrowy: numerRej, nazwa_pliku: nazwaPl, kontrahent, kontrahent_norm: normalizuj(kontrahent),
     data_dokumentu: dataDok, kwota_brutto: kwota, tytul, dzial, osoba_odpowiedzialna: osoba || null, zweryfikowal: kto,
-    data_weryfikacji: czas, modified_at: czas });
+    data_weryfikacji: czas, modified_at: czas, blad: blad ? 1 : 0, opis_bledu: blad });
   audyt('DANE_ZATWIERDZONE', kto, d, { typ, dzial, ...dane });
+  if (blad) audyt('OZNACZONO_JAKO_BLEDNY', kto, d, { opis: blad, walidacja: bledyWalidacji.join(' ') || null });
   if (numerRej !== poprzedniNumer) audyt('NUMER_NADANY', SYSTEM, d, { numer_rejestrowy: numerRej, nazwa_pliku: nazwaPl });
 
-  const etapy = sciezka(typ, dzial, kwota);
+  let etapy = sciezka(typ, dzial, kwota);
+  let powod = uzasadnienie(typ, kwota);
+  const kier = kierownikDzialu(dzial);
+  if (blad && !etapy.length && kier) {
+    etapy = [{ poziom: 'kierownik', login: kier.login }];
+    powod = 'Dokument oznaczony jako błędny — decyzję podejmuje kierownik działu.';
+  }
   if (etapy.length) {
     d.sciezka_akceptacji = etapy;
     d.runda_akceptacji += 1;
     zmienStatus(d, 'OCZEKUJE_NA_AKCEPTACJE', kto, 'WYSLANO_DO_AKCEPTACJI',
-      { do: opisEtapu(etapy[0]), etap: `1 z ${etapy.length}`, sciezka: opisSciezki(etapy), powod: uzasadnienie(typ, kwota) });
+      { do: opisEtapu(etapy[0]), etap: `1 z ${etapy.length}`, sciezka: opisSciezki(etapy), powod, blad });
     return 'OCZEKUJE_NA_AKCEPTACJE';
   }
   zmienStatus(d, 'ZATWIERDZONY', kto, 'ZMIANA_STATUSU', { powod: `typ „${typ}” nie wymaga akceptacji` });
@@ -505,11 +526,6 @@ function oznaczDuplikat(d, numerOryginalu, kto) {
 function wymagaWyjasnienia(d, komentarz, kto) {
   if (!komentarz || !komentarz.trim()) throw new BladObiegu('Opisz, co wymaga wyjaśnienia (komentarz jest obowiązkowy).');
   zmienStatus(d, 'WYMAGA_WYJASNIENIA', kto, 'WYMAGA_WYJASNIENIA', { komentarz: komentarz.trim() });
-  d.komentarz = komentarz.trim();
-}
-function wyjasniono(d, komentarz, kto) {
-  if (!komentarz || !komentarz.trim()) throw new BladObiegu('Opisz, jak sprawa została wyjaśniona.');
-  zmienStatus(d, 'DO_WERYFIKACJI', kto, 'WYJASNIONO', { komentarz: komentarz.trim() });
   d.komentarz = komentarz.trim();
 }
 
@@ -668,7 +684,7 @@ const KOL = {
   rejestr: ['Nr rejestrowy', d => esc(d.numer_rejestrowy || '—')],
   plik: ['Plik', d => esc(d.plik_oryginalny)],
   typ: ['Typ', d => esc(typOpis(d))],
-  status: ['Status', d => chipStatusu(d.status)],
+  status: ['Status', d => chipStatusu(d.status) + (d.blad ? ' <span class="chip czerwony" title="Oznaczony jako błędny">⚠ błąd</span>' : '')],
   termin: ['Termin płatności', d => terminOpis(d, terminDokumentu(d))],
   kontrahent: ['Kontrahent', d => esc(d.kontrahent || '')],
   kwota: ['Kwota', d => `<span class="liczba">${esc(d.kwota_brutto !== null && d.kwota_brutto !== undefined ? formatujKwote(d.kwota_brutto) : '')}</span>`],
@@ -911,42 +927,60 @@ function formularzWeryfikacji(d) {
     if (dni < 0) ostrzezenieTerminu = `<div class="komunikat blad"><b>Termin płatności minął:</b> ${esc(formatujDate(termin))} · ${esc(opisDni(dni))}. Zweryfikuj w pierwszej kolejności.</div>`;
     else if (dni <= DNI_ALERTU) ostrzezenieTerminu = `<div class="komunikat ostrzezenie"><b>Bliski termin płatności:</b> ${esc(formatujDate(termin))} · ${esc(opisDni(dni))}.</div>`;
   }
-  if (d.status === 'WYMAGA_WYJASNIENIA') {
-    return `${ostrzezenieTerminu}
-      <div class="komunikat ostrzezenie"><b>Wymaga wyjaśnienia:</b> ${esc(d.komentarz)}</div>
-      <label class="pole"><span>Jak sprawa została wyjaśniona?</span><textarea id="wyjasnienie" rows="3" placeholder="np. dostawca przesłał numer zamówienia ZAM/2026/118"></textarea></label>
-      <div class="bledy" id="bledy"></div>
-      <div class="akcje"><button class="btn glowny" id="wyjasniono">Wyjaśnione — wróć do weryfikacji</button></div>`;
-  }
+  const doWyjasnienia = d.status === 'WYMAGA_WYJASNIENIA';
   const opis = (d.typ_dowody || {}).opis;
+  const biezacyTyp = d.typ || d.typ_proponowany;
   const sugestia = (d.ostrzezenia.join(' ').match(/WP-\d{4}-\d{5}/) || [''])[0];
   return `${ostrzezenieTerminu}
-    ${opis ? `<div class="komunikat ${d.typ_proponowany ? 'info' : 'ostrzezenie'}">${esc(opis)}</div>` : ''}
+    ${doWyjasnienia ? `<div class="komunikat ostrzezenie"><b>Wymaga wyjaśnienia:</b> ${esc(d.komentarz)}<br>Wyjaśnij sprawę, popraw dane i zatwierdź je tutaj (opisz, co ustalono) — albo oznacz duplikat.</div>`
+      : opis ? `<div class="komunikat ${d.typ_proponowany ? 'info' : 'ostrzezenie'}">${esc(opis)}</div>` : ''}
     ${d.ostrzezenia.map(o => `<div class="komunikat ostrzezenie">${esc(o)}</div>`).join('')}
+    ${d.blad ? `<div class="komunikat blad"><b>Wcześniej oznaczony jako błędny:</b> ${esc(d.opis_bledu)}</div>` : ''}
     <label class="pole"><span>Typ dokumentu</span>
-      <select id="typ"><option value="" ${d.typ_proponowany ? '' : 'selected'} disabled>Wybierz typ dokumentu</option>
-      ${TYPY.map(t => `<option value="${t}" ${t === d.typ_proponowany ? 'selected' : ''}>${NAZWY_TYPOW[t]}</option>`).join('')}</select></label>
-    <div id="pola">${d.typ_proponowany ? polaFormularza(d, d.typ_proponowany) : '<p class="wyciszone">Wybierz typ, żeby zobaczyć pola.</p>'}</div>
+      <select id="typ"><option value="" ${biezacyTyp ? '' : 'selected'} disabled>Wybierz typ dokumentu</option>
+      ${TYPY.map(t => `<option value="${t}" ${t === biezacyTyp ? 'selected' : ''}>${NAZWY_TYPOW[t]}</option>`).join('')}</select></label>
+    <div id="pola">${biezacyTyp ? polaFormularza(d, biezacyTyp) : '<p class="wyciszone">Wybierz typ, żeby zobaczyć pola.</p>'}</div>
+    ${doWyjasnienia ? `<label class="pole" data-pole="wyjasnienie"><span>Jak sprawa została wyjaśniona? <span class="wymagane">*</span></span>
+      <textarea id="wyjasnienie" rows="2" placeholder="np. dostawca przesłał numer zamówienia ZAM/2026/118"></textarea><small class="blad-pola"></small></label>` : ''}
+    <div class="blok-bledu" data-tour="blad">
+      <label class="przelacznik"><input type="checkbox" id="z-bledem" ${d.blad ? 'checked' : ''}><span><b>Oznacz jako błędny</b> i przekaż do decyzji akceptującego</span></label>
+      <p class="podpis">Np. zły NIP, kwoty się nie sumują, brak terminu. Walidacje nie zablokują zatwierdzenia, a akceptujący zobaczy oznaczenie i zdecyduje: zatwierdzić, zwrócić albo odrzucić. Pismo lub „inne” z błędem trafia do kierownika działu.</p>
+      <label class="pole" data-pole="opis_bledu" ${d.blad ? '' : 'hidden'}><span>Opis błędu <span class="wymagane">*</span></span>
+        <input id="opis-bledu" value="${esc(d.opis_bledu || '')}" placeholder="np. netto + VAT nie równa się brutto na fakturze" autocomplete="off"><small class="blad-pola"></small></label>
+    </div>
     <div class="bledy" id="bledy"></div>
     <div class="akcje"><button class="btn glowny" id="zatwierdz-dane" data-tour="zatwierdz-dane">Zatwierdź dane</button></div>
-    <details class="inne"><summary>Inne czynności: duplikat, wyjaśnienie</summary>
+    <details class="inne"><summary>Inne czynności: duplikat${doWyjasnienia ? '' : ', wyjaśnienie'}</summary>
       <label class="pole"><span>Oznacz jako duplikat — numer wpływu lub rejestrowy oryginału</span>
         <input id="oryginal" value="${esc(sugestia)}" placeholder="np. WP-2026-00008"></label>
       <div class="akcje"><button class="btn" id="duplikat">Oznacz jako duplikat</button></div>
-      <label class="pole"><span>Co wymaga wyjaśnienia?</span><textarea id="powod" rows="2"></textarea></label>
-      <div class="akcje"><button class="btn" id="do-wyjasnienia">Przekaż do wyjaśnienia</button></div>
+      ${doWyjasnienia ? '' : `<label class="pole"><span>Co wymaga wyjaśnienia?</span><textarea id="powod" rows="2"></textarea></label>
+      <div class="akcje"><button class="btn" id="do-wyjasnienia">Przekaż do wyjaśnienia</button></div>`}
     </details>`;
+}
+
+/* Dane zatwierdzone wcześniej (np. przed zwrotem do wyjaśnienia) mają pierwszeństwo przed odczytem OCR. */
+function zatwierdzoneWczesniej(d, typ) {
+  if (d.typ !== typ) return {};
+  const dane = Object.fromEntries(Object.entries(daneTypu(d) || {}).filter(([, v]) => v !== null && v !== undefined));
+  if (typ === 'umowa' || typ === 'inne') {
+    for (const [k, v] of [['kontrahent', d.kontrahent], ['tytul', d.tytul], ['data', d.data_dokumentu]]) if (v !== null && v !== undefined) dane[k] = v;
+  }
+  return dane;
 }
 
 function polaFormularza(d, typ) {
   const prop = d.propozycje || {};
-  const dzialProp = (prop.dzial || {}).wartosc;
+  const zatw = zatwierdzoneWczesniej(d, typ);
+  const dzialProp = d.dzial || (prop.dzial || {}).wartosc;
   const pola = POLA_TYPU[typ].map(([pole, etykieta, rodzaj]) => {
-    const p = prop[pole] || {};
-    let w = p.wartosc ?? '';
+    const zZatw = pole in zatw;
+    const p = zZatw ? {} : (prop[pole] || {});
+    let w = zZatw ? zatw[pole] : (p.wartosc ?? '');
     if (rodzaj === 'kwota') w = w === '' ? '' : kwotaDoPola(+w);
-    const pewnosc = p.wartosc !== undefined && p.wartosc !== null && p.pewnosc !== undefined
-      ? `<span class="pewnosc ${p.pewnosc < 0.7 ? 'niska' : ''}" title="Propozycja systemu, metoda: ${esc(p.metoda)}">odczyt ${Math.round(p.pewnosc * 100)}%</span>` : '';
+    const pewnosc = zZatw ? '<span class="pewnosc zatwierdzone" title="Wartość zatwierdzona wcześniej przez operatora">zatwierdzone</span>'
+      : p.wartosc !== undefined && p.wartosc !== null && p.pewnosc !== undefined
+        ? `<span class="pewnosc ${p.pewnosc < 0.7 ? 'niska' : ''}" title="Propozycja systemu, metoda: ${esc(p.metoda)}">odczyt ${Math.round(p.pewnosc * 100)}%</span>` : '';
     const wymagane = (POLA_OBOWIAZKOWE[typ] || {})[pole] ? ' <span class="wymagane" title="pole obowiązkowe">*</span>' : '';
     const pole_ = rodzaj === 'data' ? `<input type="date" name="${pole}" value="${esc(w)}">`
       : rodzaj === 'tekst_dlugi' ? `<textarea name="${pole}" rows="2">${esc(w)}</textarea>`
@@ -955,10 +989,10 @@ function polaFormularza(d, typ) {
       ${p.pewnosc !== undefined && p.pewnosc < 0.7 && p.wartosc ? '<small class="niska-pewnosc">Niska pewność odczytu — sprawdź na skanie.</small>' : ''}<small class="blad-pola"></small></label>`;
   }).join('');
   return `<div class="pola">${pola}
-    <label class="pole" data-pole="dzial"><span>Dział <span class="wymagane">*</span>${dzialProp ? '<span class="pewnosc" title="Propozycja na podstawie historii kontrahenta">z historii kontrahenta</span>' : ''}</span>
+    <label class="pole" data-pole="dzial"><span>Dział <span class="wymagane">*</span>${!d.dzial && dzialProp ? '<span class="pewnosc" title="Propozycja na podstawie historii kontrahenta">z historii kontrahenta</span>' : ''}</span>
       <select name="dzial"><option value="" ${dzialProp ? '' : 'selected'}>Wybierz dział</option>
       ${DZIALY.map(z => `<option ${z === dzialProp ? 'selected' : ''}>${z}</option>`).join('')}</select><small class="blad-pola"></small></label>
-    <label class="pole"><span>Osoba odpowiedzialna (opcjonalnie)</span><input name="osoba" autocomplete="off"></label>
+    <label class="pole"><span>Osoba odpowiedzialna (opcjonalnie)</span><input name="osoba" value="${esc(d.osoba_odpowiedzialna || '')}" autocomplete="off"></label>
   </div>`;
 }
 
@@ -1015,6 +1049,7 @@ function widokAkceptacja(numer) {
     <section class="karta podglad"><h2>${esc(d.numer_rejestrowy)} · ${esc(d.tytul || '')}</h2>${podglad(d)}</section>
     <section class="karta formularz">
       <p>Status: ${chipStatusu(d.status)}</p>
+      ${d.blad ? `<div class="komunikat blad"><b>Operator oznaczył dokument jako błędny:</b> ${esc(d.opis_bledu)}<br>Zdecyduj: zatwierdź mimo błędu, zwróć do wyjaśnienia albo odrzuć (z komentarzem).</div>` : ''}
       ${termin ? `<p class="podpis">Termin płatności: ${terminOpis(d, termin)}</p>` : ''}
       ${daneDokumentuHtml(d)}
       <div data-tour="sciezka"><h3>Ścieżka akceptacji</h3>${etapyHtml(d)}
@@ -1048,6 +1083,7 @@ function widokArchiwum(numer) {
       <section class="karta formularz">
         <h2>${esc(d.numer_rejestrowy || d.numer_wplywu)} · ${esc(d.tytul || d.plik_oryginalny)}</h2>
         <p>Status: ${chipStatusu(d.status)}</p>
+        ${d.blad ? `<div class="komunikat blad"><b>Oznaczony jako błędny:</b> ${esc(d.opis_bledu)}</div>` : ''}
         ${daneDokumentuHtml(d)}
         ${przebiegAkceptacji(d).length ? `<h3>Akceptacja</h3>${etapyHtml(d)}` : ''}
         <div data-tour="archiwum-dane">
@@ -1120,13 +1156,37 @@ function podepnij(widok, t) {
     if (!d) return;
     const typ = $('#typ', widok);
     if (typ) typ.addEventListener('change', () => { $('#pola', widok).innerHTML = polaFormularza(d, typ.value); $('#bledy', widok).innerHTML = ''; });
+    const zBledem = $('#z-bledem', widok);
+    if (zBledem) zBledem.addEventListener('change', () => {
+      const pole = $('[data-pole="opis_bledu"]', widok);
+      pole.hidden = !zBledem.checked;
+      $('#bledy', widok).innerHTML = '';
+      if (zBledem.checked) $('#opis-bledu', widok).focus();
+    });
     const zatw = $('#zatwierdz-dane', widok);
     if (zatw) zatw.addEventListener('click', () => {
       const dane = zbierzPola(widok);
+      const blad = zBledem.checked ? $('#opis-bledu', widok).value : null;
+      const wyjasnienie = $('#wyjasnienie', widok) ? $('#wyjasnienie', widok).value : null;
+      if (zBledem.checked && !blad.trim()) {
+        pokazBledy(widok, [{ pole: 'opis_bledu', komunikat: 'Opisz błąd — akceptujący musi wiedzieć, co jest nie tak.', blokuje: true }]);
+        return;
+      }
       const ostrzezenia = typ.value ? sprawdzDane(d, typ.value, dane).filter(p => !p.blokuje) : [];
-      const status = wykonaj(() => zweryfikuj(d, typ.value, dane, dane.dzial, ja, dane.osoba));
-      if (!status) return;
-      const dalej = status === 'OCZEKUJE_NA_AKCEPTACJE' ? `wysłano do akceptacji: ${opisSciezki(d.sciezka_akceptacji)}` : 'zarchiwizowano (typ nie wymaga akceptacji)';
+      let status;
+      try {
+        status = zweryfikuj(d, typ.value, dane, dane.dzial, ja, dane.osoba, wyjasnienie, blad);
+      } catch (e) {
+        if (!(e instanceof BladObiegu)) throw e;
+        const problemy = e.problemy || [{ pole: null, komunikat: e.message, blokuje: true }];
+        if (e.problemy && problemy.some(p => !['dzial', 'wyjasnienie'].includes(p.pole))) {
+          problemy.push({ pole: null, blokuje: false, komunikat: 'Jeśli dokument naprawdę jest błędny (a nie źle odczytany), zaznacz „Oznacz jako błędny”, opisz błąd i zatwierdź — decyzję podejmie akceptujący.' });
+        }
+        pokazBledy(widok, problemy);
+        return;
+      }
+      let dalej = status === 'OCZEKUJE_NA_AKCEPTACJE' ? `wysłano do akceptacji: ${opisSciezki(d.sciezka_akceptacji)}` : 'zarchiwizowano (typ nie wymaga akceptacji)';
+      if (blad && status === 'OCZEKUJE_NA_AKCEPTACJE') dalej += ' (oznaczony jako błędny)';
       if (ostrzezenia.length) toast(ostrzezenia.map(p => p.komunikat).join(' '), 'uwaga');
       idzDo('weryfikacja');
       poAkcji(`${d.numer_wplywu}: dane zatwierdzone — ${dalej}.`);
@@ -1139,10 +1199,6 @@ function podepnij(widok, t) {
     const wyj = $('#do-wyjasnienia', widok);
     if (wyj) wyj.addEventListener('click', () => {
       if (wykonaj(() => (wymagaWyjasnienia(d, $('#powod', widok).value, ja), true))) poAkcji(`${d.numer_wplywu} przekazano do wyjaśnienia.`);
-    });
-    const ok = $('#wyjasniono', widok);
-    if (ok) ok.addEventListener('click', () => {
-      if (wykonaj(() => (wyjasniono(d, $('#wyjasnienie', widok).value, ja), true))) poAkcji(`${d.numer_wplywu} wraca do weryfikacji.`);
     });
   }
 
@@ -1214,7 +1270,7 @@ const KROKI = [
     tekst: 'W skrzynce czeka 6 nowych plików: faktury, umowa, pismo i jeden duplikat. Kliknij „Dalej”, a system nada numery wpływu, wykryje duplikat pliku i odczyta tekst (OCR).',
     trasa: 'wplyw', cel: '[data-tour="inbox"]', przyDalej: () => przyjmijInbox() },
   { tytul: 'Weryfikacja: człowiek zatwierdza',
-    tekst: 'Po lewej skan, po prawej dane odczytane przez system z pewnością odczytu. Porównaj, popraw, wybierz dział i kliknij „Zatwierdź dane”. Błędny NIP, niezgodne kwoty albo brak pola zablokują zatwierdzenie.',
+    tekst: 'Po lewej skan, po prawej dane odczytane przez system z pewnością odczytu. Porównaj, popraw, wybierz dział i zatwierdź. Zły NIP czy niezgodne kwoty zablokują zatwierdzenie — a jeśli dokument naprawdę jest błędny, oznaczasz go jako błędny i decyzję podejmuje akceptujący.',
     trasa: () => `weryfikacja/${wybierzDoWeryfikacji()}`, cel: '[data-tour="formularz"]' },
   { tytul: 'Akceptacja zależna od kwoty',
     tekst: 'Faktura do 10 000 zł trafia do kierownika działu, powyżej — także do dyrektora, powyżej 50 000 zł — jeszcze do finansów. Etapy idą po kolei, a kto weryfikował, ten nie akceptuje.',
@@ -1229,16 +1285,16 @@ const KROKI = [
 
 function wybierzDoWeryfikacji() {
   const kolejka = widoczne().filter(d => d.status === 'DO_WERYFIKACJI');
-  const d = kolejka.find(x => x.numer_wplywu === 'WP-2026-00030') || wgPilnosci(kolejka)[0];
+  const d = kolejka.find(x => x.plik_oryginalny === 'dokument73.pdf') || wgPilnosci(kolejka)[0];
   return d ? d.numer_wplywu : '';
 }
 function wybierzDoAkceptacji() {
   const lista = widoczne().filter(d => d.status === 'OCZEKUJE_NA_AKCEPTACJE');
-  const d = lista.find(x => x.numer_wplywu === 'WP-2026-00020') || lista.sort((a, b) => etapyAkceptacji(b).length - etapyAkceptacji(a).length)[0];
+  const d = lista.find(x => x.plik_oryginalny === 'IMG_5322.pdf') || lista.sort((a, b) => etapyAkceptacji(b).length - etapyAkceptacji(a).length)[0];
   return d ? d.numer_wplywu : '';
 }
 function wybierzZArchiwum() {
-  const d = dokPoNumerze('WP-2026-00011');
+  const d = widoczne().find(x => x.plik_oryginalny === 'scan7142.pdf');
   if (d && d.status === 'ZARCHIWIZOWANY') return d.numer_wplywu;
   const inny = widoczne().find(x => x.status === 'ZARCHIWIZOWANY');
   return inny ? inny.numer_wplywu : '';
