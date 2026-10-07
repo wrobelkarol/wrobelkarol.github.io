@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DocumentFlow · Karol Wróbel</title>
+<meta name="description" content="Elektroniczny obieg dokumentów: wpływ, odczyt, weryfikacja, akceptacja i archiwum. Demo do przetestowania w przeglądarce.">
+<meta property="og:title" content="DocumentFlow · Karol Wróbel">
+<meta property="og:image" content="zrzut.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2317191e'/%3E%3Ctext x='16' y='21.5' font-family='Arial' font-weight='700' font-size='14' fill='white' text-anchor='middle'%3EKW%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main class="strona">
+  <a class="wstecz" href="../">← Karol Wróbel</a>
+
+  <header class="projekt-naglowek">
+    <h1>DocumentFlow</h1>
+    <p>Elektroniczny obieg dokumentów w fikcyjnej firmie: od skanu faktury, przez sprawdzenie danych i akceptację, do archiwum z pełną historią.</p>
+  </header>
+
+  <div class="zrzut"><img src="zrzut.png" alt="Ekran weryfikacji: po lewej skan faktury, po prawej dane odczytane przez system do sprawdzenia" width="1440" height="900"></div>
+
+  <div class="przetestuj">
+    <a class="btn-duzy" href="demo/">
+      Przetestuj
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+    <p>Działa w przeglądarce, także na telefonie. Krótki samouczek pokaże, od czego zacząć.</p>
+  </div>
+
+  <section class="workflow" aria-labelledby="jak">
+    <h2 id="jak">Jak to działa</h2>
+    <ol class="kroki">
+      <li class="krok"><h3>Wpływ</h3><p>Dokument trafia do skrzynki i dostaje numer wpływu. System sprawdza, czy ten sam plik nie wpłynął już wcześniej.</p></li>
+      <li class="krok"><h3>Odczyt</h3><p>OCR odczytuje tekst skanu. System rozpoznaje typ dokumentu (faktura, umowa, pismo) i proponuje dane: dostawcę, NIP, kwoty, terminy.</p></li>
+      <li class="krok"><h3>Weryfikacja</h3><p>Człowiek porównuje skan z danymi i poprawia je. System pilnuje błędów: zły NIP, niezgodne kwoty, możliwy duplikat.</p></li>
+      <li class="krok"><h3>Akceptacja</h3><p>Fakturę akceptują kolejne osoby, zależnie od kwoty: kierownik działu, dyrektor, finanse. Kto sprawdzał dane, ten nie akceptuje.</p></li>
+      <li class="krok"><h3>Archiwum</h3><p>Plik dostaje nazwę według wzoru i trafia do folderu Rok / Miesiąc / Typ / Dział. Jest tylko do odczytu i ma termin brakowania.</p></li>
+      <li class="krok"><h3>Kontrola</h3><p>Wyszukiwarka po danych i treści, pełna historia (kto, kiedy, co zmienił) oraz alerty o zbliżających się terminach płatności.</p></li>
+    </ol>
+    <p class="dopisek">Wszystkie dane są fikcyjne. W wersji w przeglądarce odczyt tekstu (OCR) został wykonany wcześniej przez pełny program na komputerze, a reszta obiegu działa na żywo.</p>
+  </section>
+</main>
+<footer class="strona stopka">© 2026 Karol Wróbel</footer>
+</body>
+</html>
