@@ -178,7 +178,7 @@ function przygotujStan(s) {
   };
 }
 async function stanPoczatkowy() {
-  const odp = await fetch('dane/stan.json?v=202610071956');
+  const odp = await fetch('dane/stan.json?v=202610072004');
   return przygotujStan(await odp.json());
 }
 function zapisz() {
@@ -1072,15 +1072,15 @@ function widokAkceptacja(numer) {
 
 const filtry = { typ: '', status: 'ZARCHIWIZOWANY', kontrahent: '', numer: '', fraza: '' };
 
-function widokArchiwum(numer) {
-  const wyniki = szukaj(filtry);
-  const wybrany = numer ? dokPoNumerze(numer) : null;
-  const d = wybrany && !wybrany.inbox ? wybrany : null;
-  let szczegoly = '';
-  if (d) {
-    const wersje = S.wersje.filter(w => w.dokument_id === d.id).sort((a, b) => b.wersja - a.wersja);
-    szczegoly = `<div class="szczegoly" id="szczegoly-archiwum">
-      <section class="karta formularz">
+const NA_STRONE = 30;
+let ileWynikow = NA_STRONE;
+
+/* Szczegóły dokumentu rozwinięte pod jego wierszem na liście wyników (jak w aplikacji: jeden naraz). */
+function szczegolyArchiwum(d) {
+  const wersje = S.wersje.filter(w => w.dokument_id === d.id).sort((a, b) => b.wersja - a.wersja);
+  return `<div class="wynik-szczegoly">
+    <div class="szczegoly">
+      <div class="formularz">
         <h2>${esc(d.numer_rejestrowy || d.numer_wplywu)} · ${esc(d.tytul || d.plik_oryginalny)}</h2>
         <p>Status: ${chipStatusu(d.status)}</p>
         ${d.blad ? `<div class="komunikat blad"><b>Oznaczony jako błędny:</b> ${esc(d.opis_bledu)}</div>` : ''}
@@ -1097,12 +1097,37 @@ function widokArchiwum(numer) {
         ${wersje.length ? `<h3>Wersje pliku</h3><ul class="wersje">${wersje.map(w => `<li><b>Wersja ${w.wersja}</b>${w.wersja === d.wersja ? ' (bieżąca)' : ''} · ${esc(formatujCzas(w.czas))} · ${esc(nazwa(w.uzytkownik))} · ${esc(w.powod || '')}</li>`).join('')}</ul>
           <p class="podpis">Plik w archiwum jest tylko do odczytu. Poprawka (np. lepszy skan) to nowa wersja — poprzednie zostają.</p>` : ''}
         </div>
-      </section>
-      <section class="karta podglad">${podglad(d)}</section>
+      </div>
+      <div class="podglad">${podglad(d)}</div>
     </div>
-    <details class="karta" open><summary>Historia operacji</summary>${historiaHtml(d)}</details>`;
-  }
-  const opcje = (lista, wybrana, etykieta) => lista.map(([w, e]) => `<option value="${w}" ${w === wybrana ? 'selected' : ''}>${esc(e)}</option>`).join('');
+    <details class="historia-wyniku" open><summary>Historia operacji</summary>${historiaHtml(d)}</details>
+  </div>`;
+}
+
+function widokArchiwum(numer) {
+  const wyniki = szukaj(filtry);
+  const wybrany = numer ? dokPoNumerze(numer) : null;
+  const otwarty = wybrany && !wybrany.inbox ? wybrany : null;
+  let pokazane = wyniki.slice(0, ileWynikow);
+  // otwarty dokument (np. z linku na innej stronie) zawsze jest na liście
+  if (otwarty && !pokazane.includes(otwarty)) pokazane = wyniki.includes(otwarty) ? [...pokazane, otwarty] : [otwarty, ...pokazane];
+  const wiersze = pokazane.map(w => {
+    const roz = w === otwarty;
+    return `<div class="wynik ${roz ? 'rozwiniety' : ''}" id="wynik-${esc(w.numer_wplywu)}">
+      <a class="wynik-wiersz" href="#/archiwum${roz ? '' : '/' + esc(w.numer_wplywu)}" title="${roz ? 'Zwiń' : 'Rozwiń szczegóły dokumentu'}" aria-expanded="${roz}">
+        <span class="k-numer"><span class="strzalka" aria-hidden="true">›</span><b>${esc(w.numer_rejestrowy || w.numer_wplywu)}</b></span>
+        <span class="k-wplyw">${esc(w.numer_wplywu)}</span>
+        <span class="k-typ">${esc(NAZWY_TYPOW[w.typ || w.typ_proponowany] || '—')}</span>
+        <span class="k-kontrahent">${esc(w.kontrahent || '—')}</span>
+        <span class="k-data">${esc(formatujDate(w.data_dokumentu) || '—')}</span>
+        <span class="k-kwota">${w.kwota_brutto !== null && w.kwota_brutto !== undefined ? esc(formatujKwote(w.kwota_brutto)) : '—'}</span>
+        <span class="k-dzial">${esc(w.dzial || '—')}</span>
+        <span class="k-status">${chipStatusu(w.status)}${w.blad ? ' <span class="chip czerwony">⚠ błąd</span>' : ''}</span>
+      </a>
+      ${roz ? szczegolyArchiwum(w) : ''}
+    </div>`;
+  }).join('');
+  const opcje = (lista, wybrana) => lista.map(([w, e]) => `<option value="${w}" ${w === wybrana ? 'selected' : ''}>${esc(e)}</option>`).join('');
   return `
   <div class="naglowek"><h1>Archiwum i wyszukiwarka</h1>
   <p class="podtytul">Szukaj po metadanych albo w pełnym tekście dokumentu (OCR). Wielkość liter i polskie znaki nie mają znaczenia.</p></div>
@@ -1114,10 +1139,12 @@ function widokArchiwum(numer) {
       <label class="pole"><span>Numer</span><input name="numer" value="${esc(filtry.numer)}" placeholder="wpływu, rejestrowy, faktury"></label>
       <label class="pole szerokie"><span>Szukaj w treści dokumentu</span><input name="fraza" value="${esc(filtry.fraza)}" placeholder="np. sprzątanie, ochrona, abonament"></label>
     </form>
-    <p class="podpis">Znaleziono: <b>${wyniki.length}</b>${!d && wyniki.length ? ' · kliknij wiersz, żeby zobaczyć szczegóły' : ''}</p>
-    ${tabela([KOL.rejestr, KOL.numer, KOL.typ, KOL.kontrahent, KOL.dataDok, KOL.kwota, KOL.dzial, KOL.status], wyniki, '#/archiwum/', d && d.numer_wplywu)}
-  </section>
-  ${szczegoly}`;
+    <p class="podpis">Znaleziono: <b>${wyniki.length}</b>${wyniki.length ? ' · kliknij numer dokumentu, żeby go rozwinąć' : ''}</p>
+    ${pokazane.length ? `<div class="wyniki">
+      <div class="wynik-naglowek" aria-hidden="true"><span>Nr rejestrowy</span><span>Nr wpływu</span><span>Typ</span><span>Kontrahent</span><span>Data dok.</span><span>Kwota</span><span>Dział</span><span>Status</span></div>
+      ${wiersze}</div>` : ''}
+    ${wyniki.length > ileWynikow ? `<div class="akcje"><button class="btn" id="pokaz-kolejne">Pokaż kolejne (jeszcze ${wyniki.length - ileWynikow})</button></div>` : ''}
+  </section>`;
 }
 
 // ------------------------------------------------------------------ zdarzenia
@@ -1233,7 +1260,9 @@ function podepnij(widok, t) {
       render();
       if (aktywny) { const el = $(`#filtry [name="${aktywny}"]`); if (el) { el.focus(); try { el.setSelectionRange(poz, poz); } catch (e) { /* select */ } } }
     };
-    form.addEventListener('input', () => { clearTimeout(czasomierz); czasomierz = setTimeout(odswiez, 250); });
+    form.addEventListener('input', () => { clearTimeout(czasomierz); czasomierz = setTimeout(() => { ileWynikow = NA_STRONE; odswiez(); }, 250); });
+    const kolejne = $('#pokaz-kolejne', widok);
+    if (kolejne) kolejne.addEventListener('click', () => { ileWynikow += NA_STRONE; render(); });
     form.addEventListener('submit', e => { e.preventDefault(); odswiez(); });
   }
 }
@@ -1486,7 +1515,19 @@ async function start() {
     if (location.hash !== '#/pulpit') location.hash = '#/pulpit'; else render();
     toast('Przywrócono stan początkowy.', 'info');
   });
-  window.addEventListener('hashchange', () => { render(); if (!samouczek.el) window.scrollTo(0, 0); });
+  let poprzednia = trasa().strona;
+  window.addEventListener('hashchange', () => {
+    const t = trasa();
+    render();
+    if (!samouczek.el) {
+      const wiersz = t.strona === 'archiwum' && t.numer && document.getElementById(`wynik-${t.numer}`);
+      if (wiersz) {  // rozwinięty dokument: przewiń do jego wiersza
+        const gora = window.innerWidth <= 860 ? 56 : $('.topbar').offsetHeight + 8;
+        window.scrollTo({ top: wiersz.getBoundingClientRect().top + window.scrollY - gora, behavior: 'smooth' });
+      } else if (!(t.strona === 'archiwum' && poprzednia === 'archiwum')) window.scrollTo(0, 0);
+    }
+    poprzednia = t.strona;
+  });
   render();
   let widzial = false;
   try { widzial = localStorage.getItem(KLUCZ_SAMOUCZKA) === '1'; } catch (e) { /* brak dostępu */ }

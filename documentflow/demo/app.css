@@ -309,3 +309,37 @@ body.z-samouczkiem { overscroll-behavior: none; }
   .topbar-data { display: none; }
   .rola select { min-width: 230px; }
 }
+
+
+/* ---------- wyszukiwarka: dokument rozwija się w swoim wierszu */
+.wyniki { border: 1px solid var(--linia); border-radius: 8px; overflow: hidden; }
+.wynik-naglowek, .wynik-wiersz {
+  display: grid; grid-template-columns: 1.5fr 1.25fr .75fr 2.1fr .95fr .95fr 1.05fr 1.35fr; gap: 10px; align-items: center; padding: 9px 12px;
+}
+.wynik-naglowek { background: #fafbfc; border-bottom: 1px solid var(--linia); font-size: 12px; font-weight: 600; color: var(--wyciszony); }
+.wynik { border-bottom: 1px solid var(--linia); }
+.wynik:last-child { border-bottom: 0; }
+.wynik-wiersz { color: var(--tekst); text-decoration: none; font-size: 13.5px; transition: background .12s; }
+.wynik-wiersz:hover { background: #f8f9fb; }
+.wynik-wiersz:focus-visible { outline: 2px solid var(--akcent); outline-offset: -2px; }
+.wynik-wiersz > span { min-width: 0; overflow-wrap: anywhere; }
+.k-numer { display: flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--akcent-ciemny); }
+.strzalka { display: inline-block; font-size: 18px; line-height: 1; color: var(--wyciszony); transition: transform .15s; }
+.k-kwota { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.wynik.rozwiniety { background: #fcfdff; box-shadow: inset 3px 0 0 var(--akcent); }
+.wynik.rozwiniety .wynik-wiersz { background: var(--akcent-jasny); }
+.wynik.rozwiniety .strzalka { transform: rotate(90deg); color: var(--akcent); }
+.wynik-szczegoly { padding: 16px 16px 6px; border-top: 1px solid var(--linia); }
+.wynik-szczegoly .szczegoly { margin-bottom: 8px; }
+.historia-wyniku { margin: 4px 0 12px; }
+.historia-wyniku > summary { cursor: pointer; font-weight: 600; margin-bottom: 10px; }
+@media (max-width: 860px) {
+  .wynik-naglowek { display: none; }
+  .wynik-wiersz { display: flex; flex-wrap: wrap; gap: 2px 10px; padding: 11px 12px; }
+  .k-numer { flex: 1 1 auto; }
+  .k-status { order: 2; }
+  .k-kontrahent { order: 3; flex-basis: 100%; font-weight: 500; }
+  .k-wplyw, .k-typ, .k-data, .k-kwota, .k-dzial { order: 4; font-size: 12.5px; color: var(--wyciszony); }
+  .k-kwota::after { content: " zł"; }
+  .wynik-szczegoly { padding: 12px 12px 4px; }
+}
