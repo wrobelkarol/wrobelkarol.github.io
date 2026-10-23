@@ -53,6 +53,9 @@ a.projekt:hover .miniatura img { transform: scale(1.03); }
 .projekt-naglowek p { font-size: clamp(18px, 2.2vw, 20px); color: var(--wyciszony); max-width: 680px; margin: 0; }
 .zrzut { border-radius: 14px; overflow: hidden; border: 1px solid var(--linia); box-shadow: 0 24px 60px rgba(20, 30, 60, .12); background: #fff; }
 .zrzut img { width: 100%; height: auto; }
+.zrzut-blok { margin: 0 0 44px; }
+.podpis { margin: 14px auto 0; max-width: 760px; text-align: center; color: var(--wyciszony); font-size: 15.5px; line-height: 1.55; }
+.podpis b { color: var(--tekst); font-weight: 600; }
 .przetestuj { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 44px 0 56px; text-align: center; }
 .btn-duzy {
   display: inline-flex; align-items: center; gap: 10px; background: var(--akcent); color: #fff; text-decoration: none;
@@ -86,6 +89,8 @@ a.projekt:hover .miniatura img { transform: scale(1.03); }
   .kroki { grid-template-columns: 1fr; }
   .projekt-naglowek { padding: 32px 0 24px; }
   .zrzut { border-radius: 10px; }
+  .zrzut-blok { margin-bottom: 32px; }
+  .podpis { text-align: left; }
   .btn-duzy { width: 100%; justify-content: center; }
   .workflow { padding-bottom: 64px; }
 }

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tartak i Weryfikacja · Karol Wróbel</title>
+<meta name="description" content="Programy do digitalizacji ksiąg metrykalnych: cięcie skanów na pojedyncze akty, odczyt łaciny przez AI i weryfikacja przez człowieka.">
+<meta property="og:title" content="Tartak i Weryfikacja · Karol Wróbel">
+<meta property="og:image" content="zrzut-tartak.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2317191e'/%3E%3Ctext x='16' y='21.5' font-family='Arial' font-weight='700' font-size='14' fill='white' text-anchor='middle'%3EKW%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css?v=202610231510">
+</head>
+<body>
+<main class="strona">
+  <a class="wstecz" href="../">← Karol Wróbel</a>
+
+  <header class="projekt-naglowek">
+    <h1>Tartak i Weryfikacja</h1>
+    <p>Dwa programy, które zamieniają zdjęcia XIX-wiecznych ksiąg zgonów w uporządkowane dane: Tartak tnie skany na pojedyncze akty, a Weryfikacja pozwala sprawdzić i poprawić to, co z łaciny odczytała sztuczna inteligencja.</p>
+  </header>
+
+  <figure class="zrzut-blok">
+    <div class="zrzut"><img src="zrzut-tartak.jpg" alt="Tartak: skan strony księgi zgonów z ramkami wokół kolejnych aktów, po prawej lista wyciętych fragmentów" width="1484" height="861"></div>
+    <figcaption class="podpis"><b>Tartak.</b> Program sam znajduje akty na stronie księgi. Ramki da się poprawić myszką, a każdy akt zapisuje się jako osobny wycinek.</figcaption>
+  </figure>
+
+  <figure class="zrzut-blok">
+    <div class="zrzut"><img src="zrzut-weryfikacja.jpg" alt="Weryfikacja: wycinek aktu nad tabelą pól odczytanych po łacinie i przetłumaczonych na polski" width="1440" height="900"></div>
+    <figcaption class="podpis"><b>Weryfikacja.</b> Nad polami zostaje wycinek aktu, a obok łaciny jest tłumaczenie na polski. Podejrzane pola są podświetlone.</figcaption>
+  </figure>
+
+  <section class="workflow" aria-labelledby="jak">
+    <h2 id="jak">Jak to działa</h2>
+    <ol class="kroki">
+      <li class="krok"><h3>Skany</h3><p>Zdjęcia ksiąg metrykalnych, rocznik po roczniku: setki stron pisanych ręcznie po łacinie, w tabelach o różnym układzie.</p></li>
+      <li class="krok"><h3>Cięcie</h3><p>Tartak znajduje granice aktów: linie między wierszami tabeli, a gdy ich nie ma, rzędy cyfr w kolumnach. Nagłówki, puste wiersze i dopiski proboszcza też dostają własne ramki, więc nic nie ginie.</p></li>
+      <li class="krok"><h3>Odczyt AI</h3><p>Model językowy czyta każdy wycinek osobno i zapisuje pola aktu po łacinie i po polsku. Tłumaczenia trzymają się słowniczka, a niepewne odczyty AI oznacza samo.</p></li>
+      <li class="krok"><h3>Weryfikacja</h3><p>Człowiek porównuje pola z wycinkiem. Reguły pilnują typowych błędów: przerwana numeracja, niemożliwa data, płeć niezgodna z imieniem, małżonek w wieku dziecka, nazwisko dziecka inne niż ojca.</p></li>
+      <li class="krok"><h3>Praca we dwoje</h3><p>Pomocnik weryfikuje przez przeglądarkę na stronie chronionej hasłem, z danymi zaszyfrowanymi. Jego poprawki same wracają do programu, z każdego aktu zostaje nowsza wersja.</p></li>
+      <li class="krok"><h3>Eksport</h3><p>Sprawdzony rocznik trafia do Excela, z osobnym arkuszem dla łaciny i dla polskiego, a stamtąd do wyszukiwarki <a href="../wadobaza/">Wadobaza</a>.</p></li>
+    </ol>
+    <p class="dopisek">Oba programy działają na komputerze (Python). Tu jest tylko podgląd: skany i odczyty nie są publiczne, a zrzuty pokazują pracę na księdze zgonów parafii Przytkowice z 1890 roku.</p>
+  </section>
+</main>
+<footer class="strona stopka">© 2026 Karol Wróbel</footer>
+</body>
+</html>

@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wadobaza · Karol Wróbel</title>
+<meta name="description" content="Wyszukiwarka przetłumaczonych metryk parafialnych z powiatu wadowickiego: po nazwisku, imieniu, latach i parafii.">
+<meta property="og:title" content="Wadobaza · Karol Wróbel">
+<meta property="og:image" content="zrzut.jpg">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2317191e'/%3E%3Ctext x='16' y='21.5' font-family='Arial' font-weight='700' font-size='14' fill='white' text-anchor='middle'%3EKW%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../style.css?v=202610231510">
+</head>
+<body>
+<main class="strona">
+  <a class="wstecz" href="../">← Karol Wróbel</a>
+
+  <header class="projekt-naglowek">
+    <h1>Wadobaza</h1>
+    <p>Indeks przetłumaczonych metryk parafialnych z powiatu wadowickiego. Akty zgonów spisane po łacinie w XIX wieku można przeszukać po polsku: po nazwisku, imieniu, latach i parafii.</p>
+  </header>
+
+  <div class="zrzut"><img src="zrzut.jpg" alt="Wyszukiwarka Wadobazy: formularz wyszukiwania i tabela znalezionych aktów zgonów z Przytkowic z 1890 roku" width="1440" height="900"></div>
+
+  <div class="przetestuj">
+    <a class="btn-duzy" href="https://wrobelkarol.github.io/wadobaza/">
+      Otwórz Wadobazę
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+    </a>
+    <p>Działająca strona z prawdziwymi danymi. Na start: Przytkowice, zgony.</p>
+  </div>
+
+  <section class="workflow" aria-labelledby="jak">
+    <h2 id="jak">Jak to działa</h2>
+    <ol class="kroki">
+      <li class="krok"><h3>Tłumaczenie</h3><p>Każdy rocznik księgi to arkusz Excela: data zgonu i pogrzebu, numer domu, zmarły, rodzice, małżonek, wiek, przyczyna zgonu, ksiądz.</p></li>
+      <li class="krok"><h3>Sprawdzenie</h3><p>Skrypt czyta arkusze po nagłówkach kolumn i pilnuje błędów: niemożliwe daty, brak nazwiska, rekordy do poprawy. Na końcu pokazuje raport.</p></li>
+      <li class="krok"><h3>Granice publikacji</h3><p>Na stronę trafiają tylko akty do 1945 roku, a urodzenia do 1926. Pliki Excela zostają na dysku, publiczne są wyłącznie wygenerowane dane.</p></li>
+      <li class="krok"><h3>Wyszukiwarka</h3><p>Działa w przeglądarce, bez serwera i bez kont. Szuka też wśród rodziców, małżonków i nazwisk panieńskich rozumie odmianę nazwisk (Kukuła, Kukuły, Kukułowa) i wpisywanie bez polskich znaków.</p></li>
+      <li class="krok"><h3>Szczegóły aktu</h3><p>Każdy akt rozwija się w pełny opis z rodzicami i uwagami oraz linkiem do zdjęcia oryginalnej księgi, żeby zawsze dało się sprawdzić tłumaczenie.</p></li>
+      <li class="krok"><h3>Słowniczek</h3><p>Objaśnienia dawnych słów z ksiąg: stany chłopskie (kmieć, zagrodnik, komornik), choroby jako przyczyny zgonu, łacińskie formuły księży.</p></li>
+    </ol>
+    <p class="dopisek">Dane do kolejnych roczników przygotowują <a href="../tartak/">Tartak i Weryfikacja</a>: tną skany na pojedyncze akty i pomagają sprawdzić odczyt łaciny.</p>
+  </section>
+</main>
+<footer class="strona stopka">© 2026 Karol Wróbel</footer>
+</body>
+</html>
